@@ -1665,7 +1665,7 @@ async function apiFetch(url, options = {}, label = 'API') {
 }
 
 async function generateImage(prompt, ratio) {
-    const body = { model: MODEL_IMAGE, prompt, n: 1, size: ratio, response_format: 'url' };
+    const body = { model: MODEL_IMAGE, prompt, n: 1, size: ({'1:1':'1024x1024','9:16':'1024x1792','16:9':'1792x1024','3:4':'1024x1344','4:3':'1344x1024'}[ratio] || '1024x1024')};
     const res = await apiFetch(API_BASE + '/images/generations', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + getApiKey(), 'Content-Type': 'application/json' },
