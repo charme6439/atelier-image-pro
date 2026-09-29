@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Atelier Image">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Atelier Image Pro</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+        --bg: #fafafa; --panel: #ffffff; --panel-2: #f5f5f5; --border: #e5e5e5;
+        --ink: #1a1a1a; --ink-dim: #777; --ink-faint: #aaa;
+        --success: #2d8a4e; --error: #c0392b; --warn: #d4a017; --info: #4a6cf7;
+        --radius: 12px;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: var(--bg); color: var(--ink); min-height: 100vh;
+        padding: 1.5rem 1rem 6rem; font-size: 15px; line-height: 1.5;
+        max-width: 900px; margin: 0 auto;
+    }
+    header { margin-bottom: 1rem; text-align: center; }
+    h1 { font-size: 1.4rem; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
+    .subtitle { font-size: 0.8rem; color: var(--ink-dim); font-style: italic; }
+
+    .pwa-banner {
+        background: #e3f5e9; border-left: 3px solid var(--success);
+        padding: 0.6rem 0.85rem; border-radius: 8px;
+        font-size: 0.75rem; color: #1a4a2a;
+        margin-bottom: 1rem;
+        display: none; align-items: center; justify-content: space-between;
+        gap: 0.5rem; flex-wrap: wrap;
+    }
+    .pwa-banner.visible { display: flex; }
+    .pwa-banner button {
+        background: var(--success); color: #fff; border: none;
+        padding: 0.4rem 0.8rem; border-radius: 6px;
+        font-size: 0.72rem; font-weight: 600; cursor: pointer;
+        font-family: inherit;
+    }
+
+    .toast {
+        position: fixed; top: 1.5rem; left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: var(--ink); color: #fff;
+        padding: 0.85rem 1.4rem; border-radius: 10px;
+        font-size: 0.85rem; font-weight: 500;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        z-index: 1000; opacity: 0;
+        transition: transform 0.35s ease, opacity 0.35s ease;
+        max-width: 90vw; text-align: center;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--error); }
+    .toast.warn { background: var(--warn); }
+
+    .info-banner {
+        background: #eef4ff; border-left: 3px solid var(--info);
+        padding: 0.75rem 0.95rem; border-radius: 8px;
+        font-size: 0.78rem; color: #2a3a5c;
+        margin-bottom: 1rem; line-height: 1.45;
+    }
+
+    .section {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); margin-bottom: 1rem;
+        overflow: hidden;
+    }
+    .section-header {
+        padding: 0.9rem 1.1rem; cursor: pointer; user-select: none;
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .section-header:active { background: var(--panel-2); }
+    .section-title {
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--ink-dim); font-weight: 600;
+    }
+    .section-title .badge {
+        display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.4rem;
+        background: var(--ink); color: #fff; border-radius: 10px;
+        font-size: 0.65rem; letter-spacing: 0;
+    }
+    .section-title .badge.soft { background: var(--info); }
+    .section-title .badge.warn { background: var(--warn); }
+    .section-title .badge.error { background: var(--error); }
+    .section-header .chevron {
+        font-size: 0.7rem; color: var(--ink-faint); transition: transform 0.2s;
+    }
+    .section.open .section-header .chevron { transform: rotate(180deg); }
+    .section-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .section.open .section-body { max-height: 5000px; }
+    .section-content { padding: 0 1.1rem 1.1rem; }
+
+    /* Mode selector */
+    .mode-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.5rem;
+    }
+    .mode-card {
+        padding: 0.7rem 0.8rem; border-radius: 8px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        cursor: pointer; transition: all 0.15s;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .mode-card:active { transform: scale(0.97); }
+    .mode-card.selected {
+        background: var(--ink); color: #fff; border-color: var(--ink);
+    }
+    .mode-card .mode-emoji { font-size: 1.3rem; flex-shrink: 0; }
+    .mode-card .mode-name { font-size: 0.78rem; font-weight: 500; line-height: 1.2; }
+    .mode-card .mode-desc { font-size: 0.62rem; opacity: 0.65; margin-top: 0.1rem; line-height: 1.2; }
+
+    .mode-warning {
+        background: #fdf5e3; border-left: 3px solid var(--warn);
+        padding: 0.6rem 0.85rem; border-radius: 8px;
+        font-size: 0.75rem; color: #6a5010;
+        margin-top: 0.7rem; line-height: 1.4;
+    }
+    .mode-warning.error {
+        background: #fbe9e7; border-color: var(--error); color: #7a2418;
+    }
+
+    .api-panel {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1rem 1.2rem;
+        margin-bottom: 1rem; transition: border-color 0.3s;
+    }
+    .api-panel.ok { border-color: var(--success); }
+    .api-key-input {
+        width: 100%; padding: 0.85rem 1rem;
+        border-radius: 8px; border: 1px solid var(--border);
+        background: #fafafa; color: var(--ink);
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 0.85rem; margin-bottom: 0.6rem;
+    }
+    .api-key-input:focus { outline: none; border-color: var(--ink); }
+    .api-save-btn {
+        width: 100%; padding: 0.8rem 1.2rem;
+        border-radius: 8px; border: none;
+        background: var(--ink); color: #fff;
+        font-size: 0.9rem; font-weight: 600; font-family: inherit;
+        cursor: pointer; margin-bottom: 0.6rem;
+    }
+    .api-save-btn:active { transform: scale(0.98); }
+    .api-status-line {
+        font-size: 0.75rem; padding: 0.55rem 0.85rem;
+        border-radius: 6px; margin-bottom: 0.5rem;
+        display: flex; align-items: center; gap: 0.5rem;
+        background: var(--panel-2); color: var(--ink-dim);
+    }
+    .api-status-line.ok { background: #e3f5e9; color: var(--success); font-weight: 600; }
+    .api-status-line .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--ink-faint); flex-shrink: 0;
+    }
+    .api-status-line.ok .status-dot { background: var(--success); }
+    .api-hint { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.4rem; }
+    .api-hint a { color: var(--ink); text-decoration: underline; }
+    .stat-line {
+        font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem;
+        padding: 0.4rem 0.6rem; background: var(--panel-2); border-radius: 6px;
+        display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.3rem;
+    }
+    .wake-status {
+        font-size: 0.72rem; padding: 0.5rem 0.7rem;
+        border-radius: 6px; margin-top: 0.4rem;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #eef4ff; color: var(--info);
+        flex-wrap: wrap; gap: 0.4rem;
+    }
+    .wake-status.active { background: #e3f5e9; color: var(--success); }
+    .wake-status.warn { background: #fdf5e3; color: var(--warn); }
+    .wake-status button {
+        background: transparent; border: 1px solid currentColor;
+        color: inherit; padding: 0.25rem 0.6rem; border-radius: 6px;
+        font-size: 0.68rem; cursor: pointer; font-family: inherit;
+    }
+
+    .prompt-main {
+        width: 100%; padding: 0.85rem 1rem;
+        border-radius: 8px; border: 1px solid var(--border);
+        background: #fafafa; color: var(--ink);
+        font-family: inherit; font-size: 0.9rem;
+        min-height: 100px; resize: vertical; line-height: 1.5;
+    }
+    .prompt-main:focus { outline: none; border-color: var(--ink); }
+    .prompt-main-hint {
+        font-size: 0.72rem; color: var(--ink-dim);
+        margin-top: 0.5rem; line-height: 1.4;
+    }
+    .prompt-presets {
+        display: flex; flex-wrap: wrap; gap: 0.4rem;
+        margin-top: 0.7rem;
+    }
+    .prompt-preset {
+        padding: 0.35rem 0.7rem; border-radius: 16px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        font-size: 0.72rem; cursor: pointer;
+        transition: all 0.15s; user-select: none;
+    }
+    .prompt-preset:active { transform: scale(0.96); }
+    .prompt-preset:hover { border-color: var(--ink); }
+
+    .styles-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
+    }
+    .style-card {
+        padding: 0.7rem 0.8rem; border-radius: 8px;
+        border: 1px solid var(--border); background: var(--panel-2);
+        cursor: pointer; transition: all 0.15s;
+        display: flex; align-items: center; gap: 0.5rem;
+    }
+    .style-card:active { transform: scale(0.98); }
+    .style-card.selected { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .style-card .style-emoji { font-size: 1.2rem; flex-shrink: 0; }
+    .style-card .style-name { font-size: 0.78rem; font-weight: 500; line-height: 1.2; }
+    .style-card .style-desc { font-size: 0.62rem; opacity: 0.65; margin-top: 0.1rem; line-height: 1.2; }
+    .style-category-header {
+        grid-column: 1 / -1;
+        font-size: 0.7rem; font-weight: 600;
+        color: var(--ink-dim); text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.6rem 0 0.3rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.3rem;
+    }
+    .style-category-header:first-child { padding-top: 0; border-bottom: none; }
+    .style-category-desc {
+        grid-column: 1 / -1;
+        font-size: 0.68rem; color: var(--ink-dim);
+        font-style: italic; margin-bottom: 0.4rem; line-height: 1.35;
+    }
+    .no-style-card {
+        grid-column: 1 / -1;
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        border: 2px dashed var(--border);
+        background: transparent;
+        text-align: center; cursor: pointer;
+        transition: all 0.15s;
+        font-size: 0.82rem; color: var(--ink-dim);
+    }
+    .no-style-card.selected {
+        border-color: var(--ink); border-style: solid;
+        background: var(--panel-2); color: var(--ink); font-weight: 600;
+    }
+
+    .control-row { margin-bottom: 0.9rem; }
+    .control-row:last-child { margin-bottom: 0; }
+    .control-label {
+        display: block; font-size: 0.72rem; color: var(--ink-dim);
+        margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 600;
+    }
+    select, .text-input {
+        width: 100%; padding: 0.7rem 0.9rem; border-radius: 8px;
+        border: 1px solid var(--border); background: #fafafa;
+        color: var(--ink); font-family: inherit; font-size: 0.88rem;
+    }
+    select {
+        -webkit-appearance: none; appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%231a1a1a' d='M0 0l5 6 5-6z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 0.9rem center;
+        background-size: 10px;
+    }
+    select:focus, .text-input:focus { outline: none; border-color: var(--ink); }
+
+    .logo-grid {
+        display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem;
+    }
+    @media (min-width: 600px) {
+        .logo-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .btn-primary {
+        width: 100%; padding: 1.1rem; border-radius: var(--radius);
+        border: none; background: var(--ink); color: #fff;
+        font-size: 1rem; font-weight: 600; font-family: inherit;
+        cursor: pointer; margin-bottom: 1rem;
+    }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .btn-stop {
+        width: 100%; padding: 0.8rem; border-radius: var(--radius);
+        border: 1px solid var(--border); background: var(--panel);
+        color: var(--error); font-size: 0.85rem; font-weight: 600;
+        font-family: inherit; cursor: pointer; margin-bottom: 1rem;
+        display: none;
+    }
+    .btn-stop.visible { display: block; }
+
+    .queue { margin-top: 1rem; }
+    .queue-summary {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 0.6rem;
+        font-size: 0.78rem; display: flex; justify-content: space-between;
+        align-items: center; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .queue-summary .progress-text { color: var(--ink); font-weight: 600; }
+    .queue-summary .eta-text { color: var(--ink-dim); }
+    .queue-item {
+        display: flex; align-items: center; gap: 0.8rem;
+        padding: 0.7rem 0.8rem; border-radius: 8px;
+        border: 1px solid var(--border); margin-bottom: 0.4rem;
+        background: var(--panel); font-size: 0.82rem;
+    }
+    .queue-item.pending { opacity: 0.5; }
+    .queue-item.processing { border-color: var(--ink); }
+    .queue-item.done { border-color: var(--success); }
+    .queue-item.failed { border-color: var(--error); }
+    .queue-item .q-icon { font-size: 1rem; width: 1.5rem; text-align: center; flex-shrink: 0; }
+    .queue-item .q-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-item .q-status { font-size: 0.72rem; color: var(--ink-dim); text-align: right; flex-shrink: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .gallery { margin-top: 1.5rem; }
+    .gallery-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.8rem;
+    }
+    .gallery-item {
+        border-radius: var(--radius); overflow: hidden;
+        border: 1px solid var(--border); background: #000;
+        animation: fadeIn 0.4s ease;
+    }
+    .gallery-item img { width: 100%; display: block; aspect-ratio: 1/1; object-fit: cover; }
+    .gallery-item .g-caption {
+        padding: 0.4rem 0.6rem; background: var(--panel);
+        font-size: 0.7rem; color: var(--ink-dim);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gallery-item .g-actions {
+        display: flex; gap: 0.3rem; padding: 0.4rem 0.5rem;
+        background: var(--panel);
+    }
+    .gallery-item .g-actions a, .gallery-item .g-actions button {
+        flex: 1; text-align: center; padding: 0.35rem;
+        background: var(--panel-2); border-radius: 5px;
+        font-size: 0.68rem; color: var(--ink); text-decoration: none;
+        border: none; cursor: pointer; font-family: inherit;
+    }
+    .gallery-item .g-actions a:active, .gallery-item .g-actions button:active { background: var(--border); }
+
+    .status-bar {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: var(--ink); color: #fff; padding: 0.7rem 1rem;
+        font-size: 0.78rem; display: flex; align-items: center; gap: 0.6rem;
+        transform: translateY(100%); transition: transform 0.3s;
+        z-index: 100;
+    }
+    .status-bar.visible { transform: translateY(0); }
+    .status-bar .spinner {
+        width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: #fff; border-radius: 50%;
+        animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .hidden { display: none !important; }
+    #noSleepCanvas { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1; }
+    #noSleepVideo { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; z-index: -1; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Atelier Image Pro</h1>
+    <p class="subtitle">Vos mots deviennent images</p>
+</header>
+
+<div class="pwa-banner" id="pwa-banner">
+    <span>📲 Installez l'application sur votre écran d'accueil pour un accès rapide.</span>
+    <button id="pwa-install-btn">Installer</button>
+</div>
+
+<div class="info-banner">
+    <strong>Bienvenue :</strong> Choisissez un <strong>mode créatif</strong>, décrivez ce que vous voulez,
+    ajoutez un style, et lancez la génération. Vous pouvez créer jusqu'à <strong>1000 images d'affilée</strong>
+    et tout se fait automatiquement.
+</div>
+
+<div class="api-panel" id="api-panel">
+    <input type="password" class="api-key-input" id="api-key-input"
+           placeholder="Collez votre clé API ici (sk-...)" autocomplete="off" spellcheck="false">
+    <button type="button" class="api-save-btn" id="api-save-btn">Enregistrer la clé</button>
+    <div class="api-status-line" id="api-status-line">
+        <span class="status-dot"></span>
+        <span id="api-status-text">Aucune clé API enregistrée</span>
+    </div>
+    <div class="api-hint">
+        Clé gratuite sur <a href="https://platform.agnes-ai.com" target="_blank">platform.agnes-ai.com</a> → Settings → API Keys
+    </div>
+    <div class="stat-line">
+        <span>📊 Vitesse moyenne : <span id="stat-speed">en attente de données</span></span>
+        <span id="stat-samples">0 génération</span>
+    </div>
+    <div class="wake-status" id="wake-status">
+        <span id="wake-status-text">💤 Veille automatique</span>
+        <button type="button" id="wake-toggle-btn">Garder l'écran allumé</button>
+    </div>
+</div>
+
+<!-- ─── MODE CRÉATIF ─────────────────────────────────────── -->
+<div class="section open" id="section-mode">
+    <div class="section-header" data-toggle="section-mode">
+        <span class="section-title">🎯 Mode créatif <span class="badge">essentiel</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="mode-grid" id="mode-grid"></div>
+            <div id="mode-warning-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── PROMPT ────────────────────────────────────────────── -->
+<div class="section open" id="section-prompt">
+    <div class="section-header" data-toggle="section-prompt">
+        <span class="section-title">✍️ Description <span class="badge soft">requis</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <textarea class="prompt-main" id="main-prompt"
+                placeholder="Décrivez l'image que vous imaginez. Plus vous êtes précis, mieux c'est.
+
+Exemple : Un chat astronaute flottant dans l'espace, casque doré, nébuleuse violette en arrière-plan, style photographie réaliste, éclairage cinématographique."></textarea>
+            <div class="prompt-presets" id="prompt-presets"></div>
+            <div class="prompt-main-hint" id="prompt-hint">
+                💡 Décrivez le sujet, l'ambiance, la lumière, les couleurs, le style.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : LOGO ───────────────────────────────── -->
+<div class="section hidden" id="section-logo">
+    <div class="section-header" data-toggle="section-logo">
+        <span class="section-title">🏷️ Configuration logo <span class="badge soft">mode logo</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Nom de la marque</label>
+                <input type="text" class="text-input" id="logo-brand" placeholder="Ex : Lumière Studio">
+            </div>
+            <div class="control-row">
+                <label class="control-label">Slogan (optionnel)</label>
+                <input type="text" class="text-input" id="logo-tagline" placeholder="Ex : Créateurs d'émotions">
+            </div>
+            <div class="control-row">
+                <label class="control-label">Secteur / ambiance</label>
+                <select id="logo-sector">
+                    <option value="tech">Technologie / SaaS</option>
+                    <option value="food">Restauration / Alimentaire</option>
+                    <option value="fashion">Mode / Beauté</option>
+                    <option value="sport">Sport / Fitness</option>
+                    <option value="art">Art / Créatif</option>
+                    <option value="nature">Nature / Écologie</option>
+                    <option value="luxury">Luxe / Prestige</option>
+                    <option value="kids">Enfants / Éducation</option>
+                    <option value="auto">Automobile / Mécanique</option>
+                    <option value="health">Santé / Bien-être</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Palette de couleurs</label>
+                <select id="logo-palette">
+                    <option value="minimal">Noir & blanc minimaliste</option>
+                    <option value="warm">Chaud (or, orange, rouge)</option>
+                    <option value="cool">Froid (bleu, violet, cyan)</option>
+                    <option value="nature">Nature (vert, terre, beige)</option>
+                    <option value="vibrant">Vibrant (multicolore)</option>
+                    <option value="pastel">Pastel doux</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Type de logo</label>
+                <select id="logo-type">
+                    <option value="wordmark">Texte stylisé uniquement</option>
+                    <option value="emblem">Emblème / badge</option>
+                    <option value="mascot">Mascotte / personnage</option>
+                    <option value="abstract">Forme abstraite</option>
+                    <option value="icon">Icône simple</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : STORYBOARD ─────────────────────────── -->
+<div class="section hidden" id="section-storyboard">
+    <div class="section-header" data-toggle="section-storyboard">
+        <span class="section-title">🎬 Configuration storyboard <span class="badge soft">mode storyboard</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Titre du projet</label>
+                <input type="text" class="text-input" id="story-title" placeholder="Ex : Le Duel Final">
+            </div>
+            <div class="control-row">
+                <label class="control-label">Nombre de plans</label>
+                <select id="story-shots">
+                    <option value="4">4 plans</option>
+                    <option value="6" selected>6 plans</option>
+                    <option value="8">8 plans</option>
+                    <option value="10">10 plans</option>
+                    <option value="12">12 plans</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Genre visuel</label>
+                <select id="story-genre">
+                    <option value="cinematic">Cinématique Hollywood</option>
+                    <option value="anime">Anime japonais</option>
+                    <option value="bd">Bande dessinée</option>
+                    <option value="noir">Film noir</option>
+                    <option value="sci-fi">Science-fiction</option>
+                    <option value="fantasy">Fantasy épique</option>
+                    <option value="horror">Horreur</option>
+                    <option value="doc">Documentaire</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Rythme</label>
+                <select id="story-pace">
+                    <option value="slow">Lent et contemplatif</option>
+                    <option value="medium" selected>Médium équilibré</option>
+                    <option value="fast">Rapide et dynamique</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : AVATAR ─────────────────────────────── -->
+<div class="section hidden" id="section-avatar">
+    <div class="section-header" data-toggle="section-avatar">
+        <span class="section-title">👤 Configuration avatar <span class="badge soft">mode avatar</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Type d'avatar</label>
+                <select id="avatar-type">
+                    <option value="portrait">Portrait réaliste</option>
+                    <option value="anime">Personnage anime</option>
+                    <option value="cartoon">Cartoon</option>
+                    <option value="fantasy">Créature fantasy</option>
+                    <option value="robot">Robot / cyborg</option>
+                    <option value="animal">Animal anthropomorphe</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Ambiance</label>
+                <select id="avatar-mood">
+                    <option value="heroic">Héroïque</option>
+                    <option value="mysterious">Mystérieux</option>
+                    <option value="friendly">Amical</option>
+                    <option value="dark">Sombre</option>
+                    <option value="elegant">Élégant</option>
+                    <option value="futuristic">Futuriste</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Cadrage</label>
+                <select id="avatar-framing">
+                    <option value="bust">Buste (épaules + tête)</option>
+                    <option value="face">Visage uniquement</option>
+                    <option value="full">Corps entier</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : 18+ ────────────────────────────────── -->
+<div class="section hidden" id="section-adult">
+    <div class="section-header" data-toggle="section-adult">
+        <span class="section-title">🔞 Configuration adulte <span class="badge error">18+</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="mode-warning error">
+                ⚠️ <strong>Contenu réservé aux adultes.</strong> En cochant cette case, vous confirmez avoir 18 ans ou plus
+                et accepter de générer du contenu suggestif. L'application ne génère pas de contenu illégal,
+                violent, ni impliquant des mineurs.
+            </div>
+            <div class="control-row" style="margin-top:0.8rem;">
+                <label class="control-label" style="display:flex; align-items:center; gap:0.6rem; text-transform:none; letter-spacing:0; font-weight:500;">
+                    <input type="checkbox" id="adult-confirm" style="width:auto;">
+                    <span>Je confirme avoir 18 ans ou plus</span>
+                </label>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Niveau de suggestivité</label>
+                <select id="adult-level">
+                    <option value="romantic">Romantique / sensuel élégant</option>
+                    <option value="lingerie">Lingerie / sous-vêtements</option>
+                    <option value="artistic">Nudité artistique (non explicite)</option>
+                    <option value="artistic-suggestive">Artistique suggestive</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Style visuel</label>
+                <select id="adult-style">
+                    <option value="photographic">Photographique</option>
+                    <option value="illustration">Illustration</option>
+                    <option value="painting">Peinture</option>
+                    <option value="comic">Comic / manga</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Ambiance</label>
+                <select id="adult-atmosphere">
+                    <option value="boudoir">Boudoir</option>
+                    <option value="luxury">Luxe / palace</option>
+                    <option value="natural">Nature / plage</option>
+                    <option value="urban">Urbain / nuit</option>
+                    <option value="studio">Studio minimaliste</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : ART ────────────────────────────────── -->
+<div class="section hidden" id="section-art">
+    <div class="section-header" data-toggle="section-art">
+        <span class="section-title">🎨 Configuration art <span class="badge soft">mode artistique</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Mouvement artistique</label>
+                <select id="art-movement">
+                    <option value="impressionism">Impressionnisme</option>
+                    <option value="cubism">Cubisme</option>
+                    <option value="surrealism">Surréalisme</option>
+                    <option value="popart">Pop Art</option>
+                    <option value="artnouveau">Art Nouveau</option>
+                    <option value="expressionism">Expressionnisme</option>
+                    <option value="minimalism">Minimalisme</option>
+                    <option value="baroque">Baroque</option>
+                    <option value="renaissance">Renaissance</option>
+                    <option value="abstract">Abstrait</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Technique</label>
+                <select id="art-technique">
+                    <option value="oil">Huile sur toile</option>
+                    <option value="watercolor">Aquarelle</option>
+                    <option value="gouache">Gouache</option>
+                    <option value="pastel">Pastel sec</option>
+                    <option value="ink">Encre / lavis</option>
+                    <option value="digital">Art numérique</option>
+                    <option value="mosaic">Mosaïque</option>
+                    <option value="stainedglass">Vitrail</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Support</label>
+                <select id="art-support">
+                    <option value="canvas">Toile</option>
+                    <option value="paper">Papier</option>
+                    <option value="wall">Fresque murale</option>
+                    <option value="wood">Bois</option>
+                    <option value="glass">Verre</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── MODE SPÉCIAL : CONCEPT ART ────────────────────────── -->
+<div class="section hidden" id="section-concept">
+    <div class="section-header" data-toggle="section-concept">
+        <span class="section-title">🏗️ Configuration concept art <span class="badge soft">mode pro</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Type de concept</label>
+                <select id="concept-type">
+                    <option value="character">Personnage</option>
+                    <option value="environment">Environnement / décor</option>
+                    <option value="vehicle">Véhicule / machine</option>
+                    <option value="creature">Créature</option>
+                    <option value="weapon">Arme / objet</option>
+                    <option value="architecture">Architecture</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Univers</label>
+                <select id="concept-universe">
+                    <option value="scifi">Science-fiction</option>
+                    <option value="fantasy">Fantasy médiéval</option>
+                    <option value="cyberpunk">Cyberpunk</option>
+                    <option value="steampunk">Steampunk</option>
+                    <option value="postapo">Post-apocalyptique</option>
+                    <option value="modern">Moderne / réaliste</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Vue</label>
+                <select id="concept-view">
+                    <option value="front">Face avant</option>
+                    <option value="3quarter">Trois-quarts</option>
+                    <option value="side">Profil</option>
+                    <option value="action">Pose d'action</option>
+                    <option value="sheet">Feuille de concept (plusieurs vues)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── STYLE ─────────────────────────────────────────────── -->
+<div class="section" id="section-style">
+    <div class="section-header" data-toggle="section-style">
+        <span class="section-title">🎨 Style visuel <span class="badge">optionnel</span></span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="styles-grid" id="styles-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── RÉGLAGES ──────────────────────────────────────────── -->
+<div class="section" id="section-tech">
+    <div class="section-header" data-toggle="section-tech">
+        <span class="section-title">📷 Réglages techniques</span>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="section-content">
+            <div class="control-row">
+                <label class="control-label">Format d'image</label>
+                <select id="ratio-select">
+                    <option value="1:1" selected>Carré 1:1</option>
+                    <option value="9:16">Portrait 9:16</option>
+                    <option value="16:9">Paysage 16:9</option>
+                    <option value="3:4">Portrait 3:4</option>
+                    <option value="4:3">Paysage 4:3</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Nombre d'images (par prompt)</label>
+                <select id="variants-select">
+                    <option value="1" selected>1 image</option>
+                    <option value="2">2 images</option>
+                    <option value="3">3 images</option>
+                    <option value="4">4 images</option>
+                    <option value="6">6 images</option>
+                    <option value="10">10 images</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label class="control-label">Qualité</label>
+                <select id="quality-select">
+                    <option value="standard">Standard — rapide</option>
+                    <option value="high" selected>Élevé — équilibré</option>
+                    <option value="ultra">Ultra — maximum de détail</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="btn-primary" id="generate-btn" disabled>
+    Créer les images
+</button>
+
+<button type="button" class="btn-stop" id="stop-btn">
+    ⏹ Arrêter la génération
+</button>
+
+<div class="queue" id="queue" style="display:none;"></div>
+
+<div class="gallery" id="gallery" style="display:none;">
+    <div class="section-title" style="margin-bottom:0.8rem;">Images générées</div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+</div>
+
+<div class="status-bar" id="status-bar">
+    <div class="spinner"></div>
+    <span id="status-text">Préparation…</span>
+</div>
+
+<div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✓</span>
+    <span id="toast-text">Message</span>
+</div>
+
+<canvas id="noSleepCanvas" width="2" height="2"></canvas>
+<video id="noSleepVideo" playsinline muted loop></video>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════
+const API_BASE = 'https://apihub.agnes-ai.com/v1';
+const MODEL_IMAGE = 'agnes-image-v2.0';
+const CREATE_INTERVAL_MIN = 3500;
+const CREATE_INTERVAL_MAX = 12000;
+const TIMING_CACHE_KEY = 'agnes_image_pro_timing_v1';
+const API_KEY_STORAGE = 'agnes_api_key';
+const WAKE_LOCK_PREF = 'agnes_wakelock_enabled';
+const MAX_VISIBLE_QUEUE = 30;
+
+// ══════════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════════
+let toastTimeout = null;
+function showToast(message, type = 'success', duration = 2500) {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toast-icon');
+    const text = document.getElementById('toast-text');
+    if (!toast) return;
+    toast.classList.remove('visible', 'success', 'error', 'warn');
+    void toast.offsetWidth;
+    icon.textContent = { success: '✓', error: '✕', warn: '⚠' }[type] || '✓';
+    text.textContent = message;
+    toast.classList.add(type);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('visible'), duration);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODES CRÉATIFS
+// ══════════════════════════════════════════════════════════════════
+const CREATIVE_MODES = [
+    { id: 'classic', name: 'Classique', emoji: '🖼️', desc: 'Prompt + style libres',
+      section: null },
+    { id: 'logo', name: 'Logo / Marque', emoji: '🏷️', desc: 'Logos pro et branding',
+      section: 'section-logo' },
+    { id: 'storyboard', name: 'Storyboard', emoji: '🎬', desc: 'Plans de film séquentiels',
+      section: 'section-storyboard' },
+    { id: 'avatar', name: 'Avatar', emoji: '👤', desc: 'Portraits et personnages',
+      section: 'section-avatar' },
+    { id: 'adult', name: 'Adulte 18+', emoji: '🔞', desc: 'Contenu suggestif',
+      section: 'section-adult', warning: true },
+    { id: 'art', name: 'Art classique', emoji: '🎨', desc: 'Peinture et mouvements',
+      section: 'section-art' },
+    { id: 'concept', name: 'Concept Art', emoji: '🏗️', desc: 'Design pro pour jeux/films',
+      section: 'section-concept' }
+];
+
+let currentMode = 'classic';
+
+function renderModes() {
+    const container = document.getElementById('mode-grid');
+    container.innerHTML = CREATIVE_MODES.map(m =>
+        '<div class="mode-card ' + (currentMode === m.id ? 'selected' : '') + '" data-mode="' + m.id + '">' +
+            '<div class="mode-emoji">' + m.emoji + '</div>' +
+            '<div><div class="mode-name">' + esc(m.name) + '</div>' +
+            '<div class="mode-desc">' + esc(m.desc) + '</div></div>' +
+        '</div>'
+    ).join('');
+    container.querySelectorAll('[data-mode]').forEach(el => {
+        el.addEventListener('click', () => {
+            currentMode = el.dataset.mode;
+            applyModeChange();
+        });
+    });
+}
+
+function applyModeChange() {
+    renderModes();
+    // Cacher toutes les sections spéciales
+    CREATIVE_MODES.forEach(m => {
+        if (m.section) {
+            const el = document.getElementById(m.section);
+            if (el) el.classList.add('hidden');
+        }
+    });
+    // Afficher la section du mode actif
+    const mode = CREATIVE_MODES.find(m => m.id === currentMode);
+    if (mode && mode.section) {
+        const el = document.getElementById(mode.section);
+        if (el) el.classList.remove('hidden');
+    }
+    // Warning
+    const warnContainer = document.getElementById('mode-warning-container');
+    warnContainer.innerHTML = '';
+    if (mode && mode.warning) {
+        warnContainer.innerHTML = '<div class="mode-warning error">🔞 Ce mode permet de générer du contenu suggestif pour adultes. Utilisez-le de manière responsable et légale.</div>';
+    }
+    // Hint prompt adapté
+    const hint = document.getElementById('prompt-hint');
+    const hints = {
+        classic: '💡 Décrivez le sujet, l\'ambiance, la lumière, les couleurs, le style.',
+        logo: '💡 Le prompt est optionnel en mode logo — la configuration ci-dessus suffit.',
+        storyboard: '💡 Décrivez l\'histoire ou la scène principale. Les plans seront générés automatiquement.',
+        avatar: '💡 Décrivez les détails du personnage (cheveux, yeux, vêtements, expression).',
+        adult: '💡 Décrivez la scène de manière suggestive mais respectueuse. Le contenu explicite est interdit.',
+        art: '💡 Décrivez le sujet à peindre. Le mouvement et la technique seront appliqués automatiquement.',
+        concept: '💡 Décrivez l\'élément à concevoir (personnage, véhicule, décor, créature...).'
+    };
+    hint.textContent = hints[currentMode] || hints.classic;
+
+    // Placeholder adapté
+    const ta = document.getElementById('main-prompt');
+    const placeholders = {
+        classic: "Décrivez l'image que vous imaginez...",
+        logo: "Décrivez le style visuel souhaité (ex : minimaliste, moderne, vintage...)",
+        storyboard: "Racontez l'histoire ou la scène en quelques phrases...",
+        avatar: "Décrivez le personnage (ex : jeune femme aux cheveux argentés, yeux verts, armure dorée...)",
+        adult: "Décrivez la scène de manière suggestive mais élégante...",
+        art: "Décrivez le sujet à peindre (ex : un champ de coquelicots au coucher du soleil...)",
+        concept: "Décrivez l'élément à concevoir (ex : vaisseau spatial de transport, style rétro-futuriste...)"
+    };
+    ta.placeholder = placeholders[currentMode] || placeholders.classic;
+
+    updateGenerateBtn();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANTI-VEILLE
+// ══════════════════════════════════════════════════════════════════
+let wakeLockSentinel = null;
+let wakeLockEnabled = false;
+let canvasStream = null;
+let canvasInterval = null;
+
+function isWakeLockSupported() {
+    return 'wakeLock' in navigator && typeof navigator.wakeLock.request === 'function';
+}
+
+async function requestWakeLockAPI() {
+    if (!isWakeLockSupported()) return false;
+    try {
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+            wakeLockSentinel = null;
+            updateWakeStatus();
+        });
+        return true;
+    } catch (e) { return false; }
+}
+
+async function releaseWakeLockAPI() {
+    if (wakeLockSentinel) {
+        try { await wakeLockSentinel.release(); } catch (e) {}
+        wakeLockSentinel = null;
+    }
+}
+
+function startCanvasStream() {
+    if (canvasStream) return true;
+    try {
+        const canvas = document.getElementById('noSleepCanvas');
+        const video = document.getElementById('noSleepVideo');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (typeof canvas.captureStream !== 'function') return false;
+        canvasStream = canvas.captureStream(1);
+        let toggle = false;
+        canvasInterval = setInterval(() => {
+            toggle = !toggle;
+            ctx.fillStyle = toggle ? '#000' : '#010101';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }, 1000);
+        video.srcObject = canvasStream;
+        video.muted = true;
+        video.playsInline = true;
+        const p = video.play();
+        if (p && p.catch) p.catch(() => {});
+        return true;
+    } catch (e) { return false; }
+}
+
+function stopCanvasStream() {
+    if (canvasInterval) { clearInterval(canvasInterval); canvasInterval = null; }
+    const video = document.getElementById('noSleepVideo');
+    if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
+    if (canvasStream) {
+        try { canvasStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        canvasStream = null;
+    }
+}
+
+async function activateWakeLock() {
+    let success = false;
+    if (isWakeLockSupported()) success = await requestWakeLockAPI();
+    if (!success) success = startCanvasStream();
+    return success;
+}
+
+async function deactivateWakeLock() {
+    await releaseWakeLockAPI();
+    stopCanvasStream();
+}
+
+function updateWakeStatus() {
+    const el = document.getElementById('wake-status');
+    const txt = document.getElementById('wake-status-text');
+    const btn = document.getElementById('wake-toggle-btn');
+    if (!el || !txt || !btn) return;
+    el.classList.remove('active', 'warn');
+    const hasAny = isWakeLockSupported() || (document.getElementById('noSleepCanvas')?.captureStream);
+    if (!hasAny) {
+        el.classList.add('warn');
+        txt.textContent = '⚠️ Non supporté';
+        btn.style.display = 'none';
+        return;
+    }
+    btn.style.display = 'inline-block';
+    const isActive = wakeLockSentinel !== null || canvasStream !== null;
+    if (wakeLockEnabled && isActive) {
+        el.classList.add('active');
+        txt.textContent = '✅ Écran allumé';
+        btn.textContent = 'Désactiver';
+    } else if (wakeLockEnabled) {
+        el.classList.add('warn');
+        txt.textContent = '⏳ En attente';
+        btn.textContent = 'Désactiver';
+    } else {
+        txt.textContent = '💤 Veille auto';
+        btn.textContent = 'Garder allumé';
+    }
+}
+
+async function toggleWakeLock() {
+    if (wakeLockEnabled) {
+        wakeLockEnabled = false;
+        await deactivateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '0'); } catch (e) {}
+        showToast('Veille auto réactivée', 'warn');
+    } else {
+        wakeLockEnabled = true;
+        const ok = await activateWakeLock();
+        try { localStorage.setItem(WAKE_LOCK_PREF, '1'); } catch (e) {}
+        showToast(ok ? 'Écran allumé' : 'Activez manuellement', ok ? 'success' : 'warn');
+    }
+    updateWakeStatus();
+}
+
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && wakeLockEnabled) {
+        await activateWakeLock();
+        updateWakeStatus();
+    }
+});
+
+async function ensureWakeLockActive() {
+    if (!wakeLockEnabled) return;
+    if (wakeLockSentinel === null && canvasStream === null) {
+        await activateWakeLock();
+        updateWakeStatus();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CACHE TEMPS
+// ══════════════════════════════════════════════════════════════════
+function loadTimingCache() {
+    try { return JSON.parse(localStorage.getItem(TIMING_CACHE_KEY) || '{}'); }
+    catch (e) { return {}; }
+}
+function saveTimingCache(cache) {
+    try { localStorage.setItem(TIMING_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
+}
+function recordGenerationTime(key, durationMs) {
+    const cache = loadTimingCache();
+    if (!cache[key]) cache[key] = [];
+    cache[key].push(durationMs);
+    if (cache[key].length > 10) cache[key] = cache[key].slice(-10);
+    saveTimingCache(cache);
+    updateTimingDisplay();
+}
+function estimateGenerationTime(key) {
+    const cache = loadTimingCache();
+    const samples = cache[String(key)];
+    if (samples && samples.length) {
+        const sorted = [...samples].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 === 0 ? (sorted[mid-1] + sorted[mid]) / 2 : sorted[mid];
+    }
+    return 8000;
+}
+function updateTimingDisplay() {
+    const cache = loadTimingCache();
+    const all = Object.values(cache).flat();
+    const speedEl = document.getElementById('stat-speed');
+    const samplesEl = document.getElementById('stat-samples');
+    if (!speedEl || !samplesEl) return;
+    if (!all.length) {
+        speedEl.textContent = 'en attente';
+        samplesEl.textContent = '0 génération';
+        return;
+    }
+    const avg = all.reduce((a, b) => a + b, 0) / all.length;
+    speedEl.textContent = (avg / 1000).toFixed(1) + 's en moyenne';
+    samplesEl.textContent = all.length + ' génération' + (all.length > 1 ? 's' : '');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PRESETS
+// ══════════════════════════════════════════════════════════════════
+const PROMPT_PRESETS = [
+    { label: '🐱 Animal mignon', text: 'Un petit chaton roux endormi dans un panier en osier, lumière douce de fin d\'après-midi, poils détaillés, photographie réaliste' },
+    { label: '🏔️ Paysage épique', text: 'Chaîne de montagnes enneigées au lever du soleil, brume dorée dans les vallées, rivière scintillante, photographie grand angle' },
+    { label: '🚀 Science-fiction', text: 'Une station spatiale orbitant autour d\'une planète gazeuse violette, nébuleuse en arrière-plan, style cinématographique' },
+    { label: '🏰 Fantasy', text: 'Un château de cristal flottant au-dessus d\'une forêt enchantée, cascades lumineuses, style peinture numérique' },
+    { label: '👤 Portrait', text: 'Portrait d\'une femme aux cheveux argentés courts, regard intense, éclairage studio dramatique, fond sombre' },
+    { label: '🏙️ Urbain', text: 'Une rue de Tokyo sous la pluie la nuit, néons rouges et bleus reflétés, style cyberpunk cinématographique' },
+    { label: '🍜 Nourriture', text: 'Un bol de ramen fumant, œuf mollet, porc braisé, vapeur visible, photographie culinaire professionnelle' },
+    { label: '🐉 Créature', text: 'Un dragon de glace endormi sur une montagne, écailles cristallines, aurore boréale en arrière-plan' }
+];
+
+const PHOTO_STYLES = [
+    { id: 'realistic', name: 'Réaliste', emoji: '📷', desc: 'Photo authentique', prompt: 'photorealistic, highly detailed, natural lighting, professional photography, sharp focus' },
+    { id: 'cinematic', name: 'Cinématique', emoji: '🎬', desc: 'Look film', prompt: 'cinematic film look, dramatic lighting, movie still, anamorphic lens, shallow depth of field' },
+    { id: 'studio', name: 'Studio', emoji: '💡', desc: 'Éclairage pro', prompt: 'studio lighting, clean neutral background, professional product photography, soft shadows' },
+    { id: 'golden-hour', name: 'Golden Hour', emoji: '🌅', desc: 'Lumière dorée', prompt: 'golden hour sunlight, warm amber glow, long shadows, backlit, lens flare' },
+    { id: 'night', name: 'Nocturne', emoji: '🌙', desc: 'Sombre et bleuté', prompt: 'night scene, blue and silver tones, moonlight, dark atmosphere, luminous highlights' },
+    { id: 'bw', name: 'Noir & Blanc', emoji: '⚫', desc: 'Monochrome', prompt: 'black and white photography, high contrast monochrome, deep blacks, luminous whites' }
+];
+
+const ART_STYLES = [
+    { id: 'oil', name: 'Huile', emoji: '🖼️', desc: 'Peinture classique', prompt: 'oil painting, visible impasto brushstrokes, rich textured paint, classical masterpiece' },
+    { id: 'watercolor', name: 'Aquarelle', emoji: '🎨', desc: 'Léger et fluide', prompt: 'watercolor painting, soft bleeding edges, translucent washes, paper texture' },
+    { id: 'anime-ghibli', name: 'Anime Ghibli', emoji: '🌿', desc: 'Style Miyazaki', prompt: 'Studio Ghibli anime style, hand-painted backgrounds, soft colors, cel shading' },
+    { id: 'anime-shonen', name: 'Anime Shonen', emoji: '⚡', desc: 'Action manga', prompt: 'shonen anime style, dynamic composition, bold lines, vibrant colors, action pose' },
+    { id: 'cartoon', name: 'Cartoon 2D', emoji: '🎪', desc: 'Dessin animé', prompt: '2D cartoon style, bold black outlines, flat vibrant colors, exaggerated features' },
+    { id: 'pixar-3d', name: '3D Pixar', emoji: '✨', desc: 'Animation 3D', prompt: 'high-quality 3D CGI animation, Pixar style rendering, subsurface scattering' },
+    { id: 'comic', name: 'Comics US', emoji: '💥', desc: 'Marvel/DC', prompt: 'American comic book style, bold ink outlines, halftone dots, vibrant primary colors' },
+    { id: 'bd', name: 'BD franco-belge', emoji: '📘', desc: 'Ligne claire', prompt: 'Franco-Belgian bande dessinée style, ligne claire technique, uniform ink outlines' }
+];
+
+const SPECIAL_STYLES = [
+    { id: 'cyberpunk', name: 'Cyberpunk', emoji: '🌃', desc: 'Néons futuristic', prompt: 'cyberpunk aesthetic, neon pink and cyan lighting, holographic signs, Blade Runner atmosphere' },
+    { id: 'steampunk', name: 'Steampunk', emoji: '⚙️', desc: 'Vapeur et cuivre', prompt: 'steampunk aesthetic, brass and copper machinery, gears, steam, Victorian retro-futurism' },
+    { id: 'vaporwave', name: 'Vaporwave', emoji: '🌴', desc: 'Nostalgie 90s', prompt: 'vaporwave aesthetic, pastel gradient, VHS quality, palm trees, retro grid' },
+    { id: 'surreal', name: 'Surréaliste', emoji: '🌀', desc: 'Rêves impossibles', prompt: 'surrealist art, impossible juxtapositions, dreamlike distortions, Dali influence' },
+    { id: 'pixelart', name: 'Pixel Art', emoji: '👾', desc: '8/16 bits', prompt: 'pixel art, 16-bit retro game style, vibrant palette, crisp pixels' },
+    { id: 'lowpoly', name: 'Low Poly', emoji: '🔷', desc: 'Géométrique', prompt: 'low poly 3D art, geometric faceted shapes, flat colors per face, minimalist' },
+    { id: 'papercut', name: 'Papercut', emoji: '✂️', desc: 'Papier découpé', prompt: 'papercut art style, layered paper, subtle shadows between layers, craft aesthetic' },
+    { id: 'origami', name: 'Origami', emoji: '🦢', desc: 'Papier plié', prompt: 'origami art style, folded paper shapes, crisp geometric edges, paper texture' },
+    { id: 'noir', name: 'Film Noir', emoji: '🕵️', desc: 'Polar 1940s', prompt: 'film noir style, high contrast black and white, deep shadows, 1940s detective atmosphere' },
+    { id: 'gothic', name: 'Gothique', emoji: '🦇', desc: 'Sombre romantique', prompt: 'gothic art style, dark romantic atmosphere, candles, gargoyles, Victorian influence' },
+    { id: 'ukiyoe', name: 'Ukiyo-e', emoji: '🌊', desc: 'Estampe japonaise', prompt: 'ukiyo-e Japanese woodblock print style, flat colors, bold outlines, wave patterns' },
+    { id: 'artdeco', name: 'Art Déco', emoji: '💎', desc: 'Années 20', prompt: 'Art Deco style, geometric patterns, gold and black, luxurious, symmetrical design' }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// ÉTAT
+// ══════════════════════════════════════════════════════════════════
+const state = {
+    isRunning: false,
+    stopRequested: false,
+    queue: [],
+    completed: 0,
+    failed: 0,
+    selectedStyle: null,
+    mainPrompt: '',
+    ratio: '1:1',
+    variants: 1,
+    quality: 'high',
+    creationAttemptsSinceLastError: 0
+};
+
+let createIntervalMs = CREATE_INTERVAL_MIN;
+
+// ══════════════════════════════════════════════════════════════════
+// CLÉ API
+// ══════════════════════════════════════════════════════════════════
+function getApiKey() {
+    try { return (localStorage.getItem(API_KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+}
+
+function saveApiKey() {
+    const input = document.getElementById('api-key-input');
+    const key = input.value.trim();
+    if (!key) {
+        try { localStorage.removeItem(API_KEY_STORAGE); } catch (e) {}
+        updateApiPanel();
+        showToast('Clé supprimée', 'warn');
+        return;
+    }
+    if (!key.startsWith('sk-')) {
+        if (!confirm('La clé ne commence pas par "sk-". Sauvegarder quand même ?')) return;
+    }
+    try {
+        localStorage.setItem(API_KEY_STORAGE, key);
+        updateApiPanel();
+        showToast('Clé API enregistrée ✓', 'success');
+        input.blur();
+    } catch (e) {
+        showToast('Erreur sauvegarde', 'error');
+    }
+}
+
+function updateApiPanel() {
+    const panel = document.getElementById('api-panel');
+    const input = document.getElementById('api-key-input');
+    const statusLine = document.getElementById('api-status-line');
+    const statusText = document.getElementById('api-status-text');
+    const key = getApiKey();
+    if (key) {
+        panel.classList.add('ok');
+        statusLine.classList.add('ok');
+        statusText.textContent = 'Clé active · ' + key.slice(0, 8) + '…' + key.slice(-4);
+        input.value = key;
+    } else {
+        panel.classList.remove('ok');
+        statusLine.classList.remove('ok');
+        statusText.textContent = 'Aucune clé API enregistrée';
+        input.value = '';
+    }
+    updateGenerateBtn();
+}
+
+function updateGenerateBtn() {
+    const btn = document.getElementById('generate-btn');
+    const hasKey = !!getApiKey();
+    const hasPrompt = state.mainPrompt.trim().length > 0 || currentMode !== 'classic';
+    btn.disabled = !hasKey || !hasPrompt || state.isRunning;
+    if (state.isRunning) {
+        const done = state.completed + state.failed;
+        btn.textContent = 'Création en cours… (' + done + '/' + state.queue.length + ')';
+    } else if (!hasKey) {
+        btn.textContent = 'Ajoutez votre clé API';
+    } else if (!hasPrompt) {
+        btn.textContent = 'Écrivez une description';
+    } else {
+        const n = state.variants;
+        btn.textContent = 'Créer ' + n + ' image' + (n > 1 ? 's' : '');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UTILITAIRES
+// ══════════════════════════════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function log(msg) { console.log('[Atelier Pro] ' + msg); }
+function setStatus(text) {
+    const bar = document.getElementById('status-bar');
+    const txt = document.getElementById('status-text');
+    if (text) { bar.classList.add('visible'); txt.textContent = text; }
+    else bar.classList.remove('visible');
+}
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function formatEta(seconds) {
+    if (seconds < 60) return Math.round(seconds) + 's';
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return m + 'm' + (s > 0 ? ' ' + s + 's' : '');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RENDU
+// ══════════════════════════════════════════════════════════════════
+function renderPromptPresets() {
+    const container = document.getElementById('prompt-presets');
+    container.innerHTML = PROMPT_PRESETS.map((p, i) =>
+        '<div class="prompt-preset" data-preset="' + i + '">' + esc(p.label) + '</div>').join('');
+    container.querySelectorAll('.prompt-preset').forEach(el => {
+        el.addEventListener('click', () => {
+            const preset = PROMPT_PRESETS[parseInt(el.dataset.preset, 10)];
+            if (!preset) return;
+            const ta = document.getElementById('main-prompt');
+            ta.value = preset.text;
+            state.mainPrompt = preset.text;
+            updateGenerateBtn();
+            showToast('Exemple appliqué', 'success', 1200);
+        });
+    });
+}
+
+function renderStyles() {
+    const container = document.getElementById('styles-grid');
+    let html = '';
+    html += '<div class="no-style-card ' + (state.selectedStyle === null ? 'selected' : '') + '" data-style="none">' +
+        (state.selectedStyle === null ? '✓ Aucun style' : '🚫 Aucun style visuel') + '</div>';
+
+    html += '<div class="style-category-header">📷 Photographie</div>';
+    html += PHOTO_STYLES.map(s =>
+        '<div class="style-card ' + (state.selectedStyle === s.id ? 'selected' : '') + '" data-style="' + s.id + '">' +
+            '<div class="style-emoji">' + s.emoji + '</div>' +
+            '<div><div class="style-name">' + esc(s.name) + '</div><div class="style-desc">' + esc(s.desc) + '</div></div>' +
+        '</div>').join('');
+
+    html += '<div class="style-category-header">🎨 Illustration</div>';
+    html += ART_STYLES.map(s =>
+        '<div class="style-card ' + (state.selectedStyle === s.id ? 'selected' : '') + '" data-style="' + s.id + '">' +
+            '<div class="style-emoji">' + s.emoji + '</div>' +
+            '<div><div class="style-name">' + esc(s.name) + '</div><div class="style-desc">' + esc(s.desc) + '</div></div>' +
+        '</div>').join('');
+
+    html += '<div class="style-category-header">✨ Styles spéciaux</div>';
+    html += SPECIAL_STYLES.map(s =>
+        '<div class="style-card ' + (state.selectedStyle === s.id ? 'selected' : '') + '" data-style="' + s.id + '">' +
+            '<div class="style-emoji">' + s.emoji + '</div>' +
+            '<div><div class="style-name">' + esc(s.name) + '</div><div class="style-desc">' + esc(s.desc) + '</div></div>' +
+        '</div>').join('');
+
+    container.innerHTML = html;
+    container.querySelectorAll('[data-style]').forEach(el => {
+        el.addEventListener('click', () => {
+            const val = el.dataset.style;
+            state.selectedStyle = (val === 'none') ? null : val;
+            renderStyles();
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONSTRUCTION DES PROMPTS PAR MODE
+// ══════════════════════════════════════════════════════════════════
+function getStyleById(id) {
+    if (!id) return null;
+    return [...PHOTO_STYLES, ...ART_STYLES, ...SPECIAL_STYLES].find(s => s.id === id) || null;
+}
+
+function getQualitySuffix() {
+    return { standard: 'standard quality', high: 'high quality, highly detailed',
+        ultra: 'ultra detailed, masterpiece, best quality, intricate details, 8k' }[state.quality] || 'high quality';
+}
+
+function buildLogoPrompts(base) {
+    const brand = document.getElementById('logo-brand').value.trim() || 'Marque';
+    const tagline = document.getElementById('logo-tagline').value.trim();
+    const sector = document.getElementById('logo-sector').value;
+    const palette = document.getElementById('logo-palette').value;
+    const type = document.getElementById('logo-type').value;
+
+    const sectorText = {
+        tech: 'modern technology company', food: 'restaurant and food brand',
+        fashion: 'fashion and beauty brand', sport: 'sport and fitness brand',
+        art: 'creative artistic studio', nature: 'nature and eco-friendly brand',
+        luxury: 'luxury and premium brand', kids: 'children and education brand',
+        auto: 'automotive and mechanic brand', health: 'health and wellness brand'
+    }[sector] || 'brand';
+
+    const paletteText = {
+        minimal: 'minimalist black and white palette', warm: 'warm gold orange and red palette',
+        cool: 'cool blue purple and cyan palette', nature: 'natural green earth and beige palette',
+        vibrant: 'vibrant multicolor palette', pastel: 'soft pastel palette'
+    }[palette] || 'minimalist palette';
+
+    const typeText = {
+        wordmark: 'stylized text wordmark logo', emblem: 'emblem badge logo',
+        mascot: 'mascot character logo', abstract: 'abstract geometric shape logo',
+        icon: 'simple icon logo'
+    }[type] || 'modern logo';
+
+    const prompts = [];
+    const taglinePart = tagline ? ', with the tagline "' + tagline + '"' : '';
+    prompts.push('Professional ' + typeText + ' for a brand called "' + brand + '"' + taglinePart +
+        ', ' + sectorText + ' identity, ' + paletteText +
+        ', clean vector style, centered on white background, high resolution, commercial quality' +
+        (base ? ', ' + base : ''));
+    prompts.push('Minimalist ' + typeText + ' for "' + brand + '", ' + paletteText +
+        ', simple bold design, timeless, white background, professional branding' +
+        (base ? ', ' + base : ''));
+    prompts.push('Creative ' + typeText + ' concept for "' + brand + '"' + taglinePart +
+        ', ' + sectorText + ', ' + paletteText + ', modern iconography, flat design, white background' +
+        (base ? ', ' + base : ''));
+    return prompts;
+}
+
+function buildStoryboardPrompts(base) {
+    const title = document.getElementById('story-title').value.trim() || 'Untitled';
+    const shotCount = parseInt(document.getElementById('story-shots').value, 10) || 6;
+    const genre = document.getElementById('story-genre').value;
+    const pace = document.getElementById('story-pace').value;
+
+    const genreText = {
+        cinematic: 'cinematic Hollywood style, dramatic composition',
+        anime: 'Japanese anime style, expressive characters',
+        bd: 'Franco-Belgian comic style, ligne claire',
+        noir: 'film noir style, high contrast black and white',
+        'sci-fi': 'science fiction style, futuristic atmosphere',
+        fantasy: 'epic fantasy style, magical atmosphere',
+        horror: 'horror style, dark and unsettling atmosphere',
+        doc: 'documentary photography style, realistic'
+    }[genre] || 'cinematic style';
+
+    const paceText = {
+        slow: 'wide contemplative shots, slow pacing',
+        medium: 'balanced shot composition',
+        fast: 'dynamic action shots, fast pacing, dramatic angles'
+    }[pace] || 'balanced';
+
+    const shots = [
+        'establishing wide shot introducing the scene',
+        'medium shot of the main subject entering frame',
+        'close-up of a key detail or expression',
+        'over-the-shoulder shot revealing context',
+        'dynamic action shot capturing the pivotal moment',
+        'low angle dramatic shot emphasizing power',
+        'high angle shot revealing vulnerability',
+        'extreme close-up of eyes or hands',
+        'two-shot showing interaction between characters',
+        'tracking shot following movement',
+        'reflection shot in water or glass',
+        'final wide shot concluding the scene'
+    ];
+
+    const story = base || title;
+    const prompts = [];
+    for (let i = 0; i < shotCount; i++) {
+        const shotType = shots[i % shots.length];
+        prompts.push('Storyboard panel ' + (i + 1) + ' of ' + shotCount + ' for "' + title + '": ' +
+            story + '. Shot type: ' + shotType + '. ' + genreText + ', ' + paceText +
+            ', cinematic aspect ratio, professional storyboard illustration, clear composition');
+    }
+    return prompts;
+}
+
+function buildAvatarPrompts(base) {
+    const type = document.getElementById('avatar-type').value;
+    const mood = document.getElementById('avatar-mood').value;
+    const framing = document.getElementById('avatar-framing').value;
+
+    const typeText = {
+        portrait: 'photorealistic human portrait', anime: 'anime character illustration',
+        cartoon: 'cartoon character design', fantasy: 'fantasy creature character',
+        robot: 'futuristic robot cyborg character', animal: 'anthropomorphic animal character'
+    }[type] || 'character';
+
+    const moodText = {
+        heroic: 'heroic powerful presence', mysterious: 'mysterious enigmatic aura',
+        friendly: 'friendly warm approachable', dark: 'dark intense brooding',
+        elegant: 'elegant sophisticated refined', futuristic: 'futuristic high-tech'
+    }[mood] || 'heroic presence';
+
+    const framingText = {
+        bust: 'bust shot framing shoulders and head',
+        face: 'close-up face portrait',
+        full: 'full body shot'
+    }[framing] || 'bust shot';
+
+    const subject = base || 'a striking character';
+    const prompts = [];
+    prompts.push(subject + ', ' + typeText + ', ' + moodText + ', ' + framingText +
+        ', character concept art, detailed design, professional illustration, cinematic lighting');
+    prompts.push(subject + ', ' + typeText + ' in ' + moodText + ' style, ' + framingText +
+        ', character design sheet, multiple angles, concept art, studio quality');
+    prompts.push(subject + ', ' + typeText + ', ' + moodText + ', ' + framingText +
+        ', dramatic lighting, expressive, high detail, character reference');
+    return prompts;
+}
+
+function buildAdultPrompts(base) {
+    const level = document.getElementById('adult-level').value;
+    const style = document.getElementById('adult-style').value;
+    const atmosphere = document.getElementById('adult-atmosphere').value;
+
+    const levelText = {
+        romantic: 'elegant romantic sensual atmosphere, tasteful and artistic',
+        lingerie: 'wearing elegant lingerie, tasteful boudoir photography',
+        artistic: 'artistic non-explicit nudity, classical art style, tasteful',
+        'artistic-suggestive': 'suggestive artistic pose, elegant and refined, non-explicit'
+    }[level] || 'elegant romantic atmosphere';
+
+    const styleText = {
+        photographic: 'photorealistic photography, professional lighting',
+        illustration: 'detailed illustration, digital art',
+        painting: 'oil painting, classical art style',
+        comic: 'comic book illustration, dynamic style'
+    }[style] || 'photorealistic';
+
+    const atmoText = {
+        boudoir: 'elegant bedroom setting, soft warm lighting',
+        luxury: 'luxury palace interior, opulent decor',
+        natural: 'natural beach or nature setting, soft daylight',
+        urban: 'urban night scene, dramatic city lights',
+        studio: 'minimalist studio, professional lighting'
+    }[atmosphere] || 'elegant interior setting';
+
+    const subject = base || 'an elegant subject';
+    const prompts = [];
+    prompts.push(subject + ', ' + levelText + ', ' + styleText + ', ' + atmoText +
+        ', tasteful composition, artistic quality, respectful and elegant, adults only');
+    prompts.push(subject + ', ' + levelText + ', ' + styleText + ', ' + atmoText +
+        ', cinematic framing, artistic lighting, high-quality reference, elegant pose');
+    return prompts;
+}
+
+function buildArtPrompts(base) {
+    const movement = document.getElementById('art-movement').value;
+    const technique = document.getElementById('art-technique').value;
+    const support = document.getElementById('art-support').value;
+
+    const movementText = {
+        impressionism: 'impressionist style, visible brushstrokes, play of light',
+        cubism: 'cubist style, geometric fragmentation, multiple perspectives',
+        surrealism: 'surrealist style, dreamlike impossible elements',
+        popart: 'pop art style, bold colors, commercial imagery',
+        artnouveau: 'Art Nouveau style, flowing organic lines, decorative patterns',
+        expressionism: 'expressionist style, emotional intensity, distorted forms',
+        minimalism: 'minimalist style, simple essential forms, negative space',
+        baroque: 'baroque style, dramatic movement, rich ornamentation',
+        renaissance: 'renaissance style, classical balance, anatomical precision',
+        abstract: 'abstract style, non-representational, color and form only'
+    }[movement] || 'classical style';
+
+    const techniqueText = {
+        oil: 'oil painting technique, rich impasto', watercolor: 'watercolor technique, translucent washes',
+        gouache: 'gouache technique, opaque matte colors', pastel: 'soft pastel technique, powdery texture',
+        ink: 'ink wash technique, flowing lines', digital: 'digital painting technique',
+        mosaic: 'mosaic technique, small tiles', stainedglass: 'stained glass technique, colored glass segments'
+    }[technique] || 'oil painting';
+
+    const supportText = {
+        canvas: 'on canvas', paper: 'on textured paper', wall: 'as a wall fresco',
+        wood: 'on wooden panel', glass: 'on glass panel'
+    }[support] || 'on canvas';
+
+    const subject = base || 'a meaningful composition';
+    const prompts = [];
+    prompts.push(subject + ', ' + movementText + ', ' + techniqueText + ', ' + supportText +
+        ', museum quality, masterpiece, detailed artwork');
+    prompts.push(subject + ' interpreted in ' + movementText + ', ' + techniqueText + ' ' + supportText +
+        ', artistic composition, gallery quality');
+    return prompts;
+}
+
+function buildConceptPrompts(base) {
+    const type = document.getElementById('concept-type').value;
+    const universe = document.getElementById('concept-universe').value;
+    const view = document.getElementById('concept-view').value;
+
+    const typeText = {
+        character: 'character design', environment: 'environment concept art',
+        vehicle: 'vehicle design', creature: 'creature design',
+        weapon: 'weapon design', architecture: 'architectural concept'
+    }[type] || 'concept design';
+
+    const universeText = {
+        scifi: 'science fiction universe, futuristic tech',
+        fantasy: 'fantasy medieval universe, magic and myth',
+        cyberpunk: 'cyberpunk universe, neon and high-tech',
+        steampunk: 'steampunk universe, brass and steam',
+        postapo: 'post-apocalyptic universe, ruins and survival',
+        modern: 'modern realistic setting'
+    }[universe] || 'science fiction universe';
+
+    const viewText = {
+        front: 'front view', '3quarter': 'three-quarter view', side: 'side profile view',
+        action: 'dynamic action pose', sheet: 'concept sheet with multiple views and details'
+    }[view] || 'front view';
+
+    const subject = base || 'a unique design';
+    const prompts = [];
+    prompts.push(subject + ', professional ' + typeText + ', ' + universeText + ', ' + viewText +
+        ', concept art quality, detailed design, industry standard, reference sheet');
+    prompts.push(subject + ' concept, ' + typeText + ', ' + universeText + ', ' + viewText +
+        ', professional concept art, cinematic lighting, high detail, design sheet');
+    prompts.push(subject + ', ' + typeText + ', ' + universeText + ', ' + viewText +
+        ', detailed reference art, AAA game quality, professional illustration');
+    return prompts;
+}
+
+function buildBasePrompt() {
+    const userPrompt = state.mainPrompt.trim();
+    const style = getStyleById(state.selectedStyle);
+    const parts = [];
+    if (userPrompt) parts.push(userPrompt);
+    if (style) parts.push(style.prompt);
+    parts.push(getQualitySuffix());
+    parts.push('no text, no watermark, no signature, no logo');
+    return parts.join(', ');
+}
+
+function buildAllPrompts() {
+    const base = state.mainPrompt.trim();
+    let prompts = [];
+
+    switch (currentMode) {
+        case 'logo': prompts = buildLogoPrompts(base); break;
+        case 'storyboard': prompts = buildStoryboardPrompts(base); break;
+        case 'avatar': prompts = buildAvatarPrompts(base); break;
+        case 'adult':
+            if (!document.getElementById('adult-confirm').checked) {
+                showToast('Cochez la confirmation 18+', 'error');
+                return null;
+            }
+            prompts = buildAdultPrompts(base);
+            break;
+        case 'art': prompts = buildArtPrompts(base); break;
+        case 'concept': prompts = buildConceptPrompts(base); break;
+        default: prompts = [buildBasePrompt()];
+    }
+
+    // Ajouter le style + qualité à tous les prompts du mode
+    const style = getStyleById(state.selectedStyle);
+    const quality = getQualitySuffix();
+    return prompts.map(p => {
+        const parts = [p];
+        if (style) parts.push(style.prompt);
+        parts.push(quality);
+        parts.push('no text, no watermark, no signature');
+        return parts.join(', ');
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════════════
+async function apiFetch(url, options = {}, label = 'API') {
+    for (let attempt = 0; attempt < 6; attempt++) {
+        if (state.stopRequested) throw new Error('Arrêt demandé');
+        try {
+            const res = await fetch(url, options);
+            if (res.status === 429) {
+                if (createIntervalMs < CREATE_INTERVAL_MAX) createIntervalMs = Math.min(createIntervalMs + 1500, CREATE_INTERVAL_MAX);
+                const wait = [5, 10, 20, 30, 45, 60][Math.min(attempt, 5)];
+                setStatus('L\'IA se prépare… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            if (res.status === 503) {
+                const wait = [3, 6, 10, 15, 25, 40][Math.min(attempt, 5)];
+                setStatus('Votre image se prépare… (' + wait + 's)');
+                await sleep(wait * 1000);
+                continue;
+            }
+            if (res.ok && createIntervalMs > CREATE_INTERVAL_MIN) {
+                state.creationAttemptsSinceLastError++;
+                if (state.creationAttemptsSinceLastError >= 4) {
+                    createIntervalMs = Math.max(createIntervalMs - 800, CREATE_INTERVAL_MIN);
+                    state.creationAttemptsSinceLastError = 0;
+                }
+            }
+            return res;
+        } catch (e) {
+            if (e.message === 'Arrêt demandé') throw e;
+            const wait = [2, 4, 6, 10, 15, 25][Math.min(attempt, 5)];
+            setStatus('Connexion… (' + wait + 's)');
+            await sleep(wait * 1000);
+        }
+    }
+    return fetch(url, options);
+}
+
+async function generateImage(prompt, ratio) {
+    const body = { model: MODEL_IMAGE, prompt, n: 1, size: ratio, response_format: 'url' };
+    const res = await apiFetch(API_BASE + '/images/generations', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + getApiKey(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    }, 'Génération');
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error('HTTP ' + res.status + ' — ' + err.slice(0, 200));
+    }
+    const data = await res.json();
+    const url = (data.data && data.data[0] && (data.data[0].url || data.data[0].b64_json))
+        || data.url || (data.output && data.output.url);
+    if (!url) throw new Error('Aucune URL');
+    if (url.startsWith('data:')) return url;
+    if (url.length > 200 && !url.startsWith('http')) return 'data:image/png;base64,' + url;
+    return url;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FILE D'ATTENTE
+// ══════════════════════════════════════════════════════════════════
+function renderQueue() {
+    const queueEl = document.getElementById('queue');
+    if (!state.queue.length) { queueEl.style.display = 'none'; return; }
+    queueEl.style.display = 'block';
+
+    const total = state.queue.length;
+    const done = state.completed + state.failed;
+    const estGen = estimateGenerationTime(state.ratio) / 1000;
+    const eta = (total - done) * ((createIntervalMs + estGen * 1000) / 1000);
+
+    let html = '<div class="queue-summary">' +
+        '<span class="progress-text">Progression : ' + done + '/' + total + '</span>' +
+        '<span class="eta-text">' + (done < total ? '≈ ' + formatEta(eta) + ' restant' : 'Terminé') + '</span>' +
+        '</div>';
+
+    const visible = state.queue.slice(0, MAX_VISIBLE_QUEUE);
+    const hidden = state.queue.length - visible.length;
+    html += visible.map(item => {
+        let icon = '○', statusText = 'En attente', cls = 'pending';
+        if (item.status === 'processing') { icon = '◐'; statusText = item.progress || 'En cours…'; cls = 'processing'; }
+        else if (item.status === 'done') { icon = '●'; statusText = 'Terminé'; cls = 'done'; }
+        else if (item.status === 'failed') { icon = '✕'; statusText = 'Échec'; cls = 'failed'; }
+        return '<div class="queue-item ' + cls + '">' +
+            '<div class="q-icon">' + icon + '</div>' +
+            '<div class="q-name">' + esc(item.shortPrompt) + '</div>' +
+            '<div class="q-status">' + esc(statusText) + '</div></div>';
+    }).join('');
+    if (hidden > 0) html += '<div class="queue-more">… et ' + hidden + ' autre' + (hidden > 1 ? 's' : '') + '</div>';
+    queueEl.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GALERIE
+// ══════════════════════════════════════════════════════════════════
+function addToGallery(url, prompt, index) {
+    const galleryEl = document.getElementById('gallery');
+    const grid = document.getElementById('gallery-grid');
+    galleryEl.style.display = 'block';
+    const el = document.createElement('div');
+    el.className = 'gallery-item';
+    const safePrompt = esc(prompt.length > 80 ? prompt.slice(0, 80) + '…' : prompt);
+    el.innerHTML =
+        '<img src="' + url + '" alt="" loading="lazy">' +
+        '<div class="g-caption" title="' + esc(prompt) + '">' + safePrompt + '</div>' +
+        '<div class="g-actions">' +
+            '<a href="' + url + '" download="image-' + index + '.png" target="_blank">⬇</a>' +
+            '<a href="' + url + '" target="_blank">🔍</a>' +
+            '<button type="button" class="g-share" data-url="' + url + '">📤</button>' +
+        '</div>';
+    grid.appendChild(el);
+
+    el.querySelector('.g-share').addEventListener('click', async () => {
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: 'Image IA', url });
+            } else {
+                await navigator.clipboard.writeText(url);
+                showToast('Lien copié', 'success');
+            }
+        } catch (e) {}
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PIPELINE
+// ══════════════════════════════════════════════════════════════════
+async function processItem(item) {
+    item.status = 'processing';
+    item.progress = 'Génération…';
+    renderQueue();
+    try {
+        const url = await generateImage(item.fullPrompt, state.ratio);
+        item.status = 'done';
+        item.imageUrl = url;
+        state.completed++;
+        addToGallery(url, item.prompt, item.index + 1);
+    } catch (e) {
+        if (e.message === 'Arrêt demandé') {
+            item.status = 'failed';
+            item.progress = 'Arrêté';
+        } else {
+            item.status = 'failed';
+            item.progress = 'Échec';
+            state.failed++;
+        }
+    }
+    renderQueue();
+    updateGenerateBtn();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// WORKFLOW
+// ══════════════════════════════════════════════════════════════════
+async function startGeneration() {
+    if (state.isRunning) return;
+    if (!getApiKey()) {
+        showToast('Ajoutez votre clé API', 'error');
+        return;
+    }
+
+    state.mainPrompt = document.getElementById('main-prompt').value.trim();
+
+    // Vérification mode adulte
+    if (currentMode === 'adult' && !document.getElementById('adult-confirm').checked) {
+        showToast('Cochez la confirmation 18+', 'error');
+        return;
+    }
+
+    // Générer les prompts du mode
+    let modePrompts = buildAllPrompts();
+    if (!modePrompts) return;
+
+    // Récupérer un prompt utilisateur par défaut si vide
+    if (!state.mainPrompt && currentMode === 'classic') {
+        showToast('Écrivez une description', 'error');
+        return;
+    }
+
+    // File
+    state.queue = [];
+    let idx = 0;
+    for (const prompt of modePrompts) {
+        for (let v = 0; v < state.variants; v++) {
+            state.queue.push({
+                index: idx++,
+                prompt: prompt,
+                shortPrompt: prompt.length > 60 ? prompt.slice(0, 60) + '…' : prompt,
+                fullPrompt: prompt,
+                status: 'pending',
+                progress: null,
+                imageUrl: null
+            });
+        }
+    }
+
+    state.isRunning = true;
+    state.stopRequested = false;
+    state.completed = 0;
+    state.failed = 0;
+    state.creationAttemptsSinceLastError = 0;
+    createIntervalMs = CREATE_INTERVAL_MIN;
+
+    document.getElementById('gallery-grid').innerHTML = '';
+    document.getElementById('gallery').style.display = 'none';
+    document.getElementById('stop-btn').classList.add('visible');
+    document.getElementById('generate-btn').disabled = true;
+
+    await ensureWakeLockActive();
+    renderQueue();
+    updateGenerateBtn();
+
+    log('Démarrage mode ' + currentMode + ' — ' + state.queue.length + ' images');
+
+    const start = Date.now();
+    const tasks = [];
+
+    try {
+        for (let i = 0; i < state.queue.length; i++) {
+            if (state.stopRequested) break;
+            tasks.push(processItem(state.queue[i]));
+            if (i < state.queue.length - 1 && !state.stopRequested) {
+                const waitSec = Math.ceil(createIntervalMs / 1000);
+                for (let r = waitSec; r > 0; r--) {
+                    if (state.stopRequested) break;
+                    setStatus('Respiration… — ' + (i + 2) + '/' + state.queue.length + ' dans ' + r + 's');
+                    await sleep(1000);
+                }
+            }
+        }
+        if (tasks.length) {
+            setStatus('Finalisation…');
+            await Promise.allSettled(tasks);
+        }
+    } catch (e) {
+        log('Erreur globale : ' + e.message);
+    }
+
+    const elapsed = (Date.now() - start) / 1000;
+    const summary = state.stopRequested
+        ? 'Arrêté — ' + state.completed + '/' + state.queue.length
+        : '✦ ' + state.completed + '/' + state.queue.length + ' images en ' + formatEta(elapsed) + ' ✦';
+    log(summary);
+    setStatus(summary);
+    await sleep(3500);
+    setStatus(null);
+
+    state.isRunning = false;
+    state.stopRequested = false;
+    document.getElementById('stop-btn').classList.remove('visible');
+    updateGenerateBtn();
+    showToast(state.completed + ' image' + (state.completed > 1 ? 's' : '') + ' créée' + (state.completed > 1 ? 's' : ''), 'success');
+}
+
+function stopGeneration() {
+    if (!state.isRunning) return;
+    state.stopRequested = true;
+    setStatus('Arrêt en cours…');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PWA INSTALLATION
+// ══════════════════════════════════════════════════════════════════
+let deferredPrompt = null;
+const pwaBanner = document.getElementById('pwa-banner');
+const pwaInstallBtn = document.getElementById('pwa-install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (pwaBanner) pwaBanner.classList.add('visible');
+});
+
+if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            showToast('Installation manuelle : menu → "Ajouter à l\'écran d\'accueil"', 'warn', 5000);
+            return;
+        }
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+            showToast('Application installée ✓', 'success');
+            pwaBanner.classList.remove('visible');
+        }
+        deferredPrompt = null;
+    });
+}
+
+window.addEventListener('appinstalled', () => {
+    if (pwaBanner) pwaBanner.classList.remove('visible');
+    showToast('Atelier Image Pro installé', 'success');
+});
+
+// Service worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(() => {
+            log('Service worker enregistré');
+        }).catch((e) => log('SW erreur : ' + e.message));
+    });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+(function init() {
+    document.getElementById('api-save-btn').addEventListener('click', saveApiKey);
+    document.getElementById('stop-btn').addEventListener('click', stopGeneration);
+
+    const apiInput = document.getElementById('api-key-input');
+    apiInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveApiKey(); }
+    });
+
+    document.querySelectorAll('[data-toggle]').forEach(header => {
+        header.addEventListener('click', () => {
+            document.getElementById(header.dataset.toggle).classList.toggle('open');
+        });
+    });
+
+    const mainPrompt = document.getElementById('main-prompt');
+    mainPrompt.addEventListener('input', e => {
+        state.mainPrompt = e.target.value;
+        updateGenerateBtn();
+    });
+
+    document.getElementById('ratio-select').addEventListener('change', e => state.ratio = e.target.value);
+    document.getElementById('variants-select').addEventListener('change', e => {
+        state.variants = parseInt(e.target.value, 10) || 1;
+        updateGenerateBtn();
+    });
+    document.getElementById('quality-select').addEventListener('change', e => state.quality = e.target.value);
+
+    document.getElementById('generate-btn').addEventListener('click', startGeneration);
+    document.getElementById('wake-toggle-btn').addEventListener('click', toggleWakeLock);
+
+    try { wakeLockEnabled = localStorage.getItem(WAKE_LOCK_PREF) === '1'; } catch (e) {}
+    if (wakeLockEnabled) activateWakeLock().then(() => updateWakeStatus());
+
+    updateApiPanel();
+    updateTimingDisplay();
+    updateWakeStatus();
+    renderPromptPresets();
+    renderStyles();
+    renderModes();
+    applyModeChange();
+    renderQueue();
+
+    log('Atelier Image Pro prêt.');
+})();
+</script>
+
+</body>
+</html>

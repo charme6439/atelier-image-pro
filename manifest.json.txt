@@ -1,0 +1,15 @@
+{
+  "name": "Atelier Image Pro",
+  "short_name": "Atelier Image",
+  "description": "Créez des images par IA à partir de vos descriptions",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafafa",
+  "theme_color": "#1a1a1a",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
